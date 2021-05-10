@@ -1,0 +1,5 @@
+class Constants:
+	
+	DBMODE_TEST = 0
+	DBMODE_UAT =  1
+	DBMODE_PRODUCTION =  2
