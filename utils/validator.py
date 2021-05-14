@@ -27,6 +27,16 @@ class AppValidatorFactory:
 			return self._get_add_fixed_deposit_info_validator()
 		elif method_name == "update_fixed_deposit_info":
 			return self._get_update_fixed_deposit_info_validator()
+		elif method_name == "get_fx_forward_info":
+			return self._get_get_fx_forward_info_validator()
+		elif method_name == "add_fx_forward_info":
+			return self._get_add_fx_forward_info_validator()
+		elif method_name == "update_fx_forward_info":
+			return self._get_update_fx_forward_info_validator()
+		elif method_name == "add_counter_party_info":
+			return self._get_add_counter_party_validator()
+		elif method_name == "update_counter_party_info":
+			return self._get_update_counter_party_info_validator()
 		else:
 			raise Exception("No validator defined for method_name: " + \
 								method_name + \
@@ -103,7 +113,6 @@ exchange_name:
 '''
 		schema = yaml.load(schema_text, Loader=yaml.FullLoader)
 		return AppValidator(schema)
-
 
 	def _get_update_security_basic_info_validator(self):
 		schema_text = '''
@@ -201,7 +210,6 @@ value_of_1pt:
 		schema = yaml.load(schema_text, Loader=yaml.FullLoader)
 		return AppValidator(schema)
 
-
 	def _get_update_futures_info_validator(self):
 		schema_text = '''
 ticker:
@@ -267,7 +275,6 @@ interest_rate:
 		schema = yaml.load(schema_text, Loader=yaml.FullLoader)
 		return AppValidator(schema)
 
-
 	def _get_update_fixed_deposit_info_validator(self):
 		schema_text = '''
 geneva_id:
@@ -298,6 +305,161 @@ interest_rate:
 		schema = yaml.load(schema_text, Loader=yaml.FullLoader)
 		return AppValidator(schema)
 
+
+	def _get_get_fx_forward_info_validator(self):
+		#-- note: yaml need to use space not tab for indentation
+		schema_text = '''
+factset_id:
+  required: true
+  empty: false
+  type: string
+  maxlength: 100
+'''
+		schema = yaml.load(schema_text, Loader=yaml.FullLoader)
+		return AppValidator(schema)
+
+	def _get_add_fx_forward_info_validator(self):
+		schema_text = '''
+factset_id:
+  required: true
+  empty: false
+  type: string
+  maxlength: 100
+geneva_fx_forward_name:
+  required: true
+  empty: false
+  type: string
+  maxlength: 100
+geneva_counter_party:
+  required: true
+  empty: false
+  type: string
+  maxlength: 100
+starting_date:
+  required: true
+  check_with: yyyy_mm_dd_date_format
+maturity_date:
+  required: true
+  check_with: yyyy_mm_dd_date_format
+base_currency:
+  required: true
+  empty: false
+  type: string
+  maxlength: 5
+base_currency_quantity:
+  required: true
+  check_with: float_format
+term_currency:
+  required: true
+  empty: false
+  type: string
+  maxlength: 5
+term_currency_quantity:
+  required: true
+  check_with: float_format
+forward_rate:
+  required: true
+  check_with: float_format
+'''
+		schema = yaml.load(schema_text, Loader=yaml.FullLoader)
+		return AppValidator(schema)
+
+	def _get_update_fx_forward_info_validator(self):
+		schema_text = '''
+factset_id:
+  required: true
+  empty: false
+  type: string
+  maxlength: 100
+geneva_fx_forward_name:
+  required: false
+  empty: false
+  type: string
+  maxlength: 100
+geneva_counter_party:
+  required: false
+  empty: false
+  type: string
+  maxlength: 100
+starting_date:
+  required: false
+  check_with: yyyy_mm_dd_date_format
+maturity_date:
+  required: false
+  check_with: yyyy_mm_dd_date_format
+base_currency:
+  required: false
+  empty: false
+  type: string
+  maxlength: 5
+base_currency_quantity:
+  required: false
+  check_with: float_format
+term_currency:
+  required: false
+  empty: false
+  type: string
+  maxlength: 5
+term_currency_quantity:
+  required: false
+  check_with: float_format
+forward_rate:
+  required: false
+  check_with: float_format
+'''
+		schema = yaml.load(schema_text, Loader=yaml.FullLoader)
+		return AppValidator(schema)
+
+
+	def _get_add_counter_party_validator(self):
+		schema_text = '''
+geneva_counter_party:
+  required: true
+  empty: false
+  type: string
+  maxlength: 100
+geneva_party_type:
+  required: true
+  type: string
+  allowed: ['Fixed Deposit', 'Repo', 'FX Forward']
+geneva_party_name:
+  required: false
+  empty: true
+  type: string
+  maxlength: 100
+bloomberg_ticker:
+  required: false
+  empty: true
+  type: string
+  maxlength: 50
+'''
+		schema = yaml.load(schema_text, Loader=yaml.FullLoader)
+		return AppValidator(schema)
+
+	def _get_update_counter_party_info_validator(self):
+		schema_text = '''
+geneva_counter_party:
+  required: true
+  empty: false
+  type: string
+  maxlength: 100
+geneva_party_type:
+  required: true
+  type: string
+  allowed: ['Fixed Deposit', 'Repo', 'FX Forward']
+geneva_party_name:
+  required: false
+  empty: false
+  type: string
+  maxlength: 100
+bloomberg_ticker:
+  required: false
+  empty: true
+  type: string
+  maxlength: 50
+'''
+		schema = yaml.load(schema_text, Loader=yaml.FullLoader)
+		return AppValidator(schema)
 
 class AppValidator(Validator):
 	

@@ -11,6 +11,8 @@ from security_data.utils.validator import AppValidatorFactory
 from security_data.services.security_base_services import SecurityBaseServices
 from security_data.services.futures_services import FuturesServices
 from security_data.services.fixed_deposit_services import FixedDepositServices
+from security_data.services.fx_forward_services import FxForwardServices
+from security_data.services.otc_counter_party_services import OtcCounterPartyServices
 
 #-- serivce and DB connection shall be stateless so it is safe to have a singleton
 #db = DBConn.get_db()
@@ -43,7 +45,9 @@ class AppController:
 		db = DBConn.get_db(self.dbmode)
 		self.security_base_services = SecurityBaseServices(db)
 		self.futures_services = FuturesServices(db)
-		self.fixed_deposit_services = FixedDepositServices(db)
+		self.otc_counter_party_services = OtcCounterPartyServices(db)
+		self.fixed_deposit_services = FixedDepositServices(db, self.otc_counter_party_services)
+		self.fx_forward_services = FxForwardServices(db, self.otc_counter_party_services)
 		return 0
 
 	def clear_security_data(self):
@@ -59,8 +63,12 @@ class AppController:
 			self.security_base_services.delete_all()
 			self.logger.warn("clear data in futures table")
 			self.futures_services.delete_all()
-			self.logger.debug("clear data in fixed_deposit table")			
+			self.logger.debug("clear data in fixed_deposit table")
 			self.fixed_deposit_services.delete_all()
+			self.logger.debug("clear data in fx_forward table")
+			self.fx_forward_services.delete_all()
+			self.logger.debug("clear data in otc_counter_party table")
+			self.otc_counter_party_services.delete_all()
 			return 0
 	
 	def get_security_basic_info(self, geneva_id):
@@ -215,4 +223,94 @@ class AppController:
 		#-- create data model
 		#-- reuse the security_info
 		self.fixed_deposit_services.update(security_info)
+		return 0
+	
+	def get_fx_forward_info(self, factset_id):
+		if self.dbmode is None:
+			raise DataStoreNotYetInitializeError("Plase call initializeDatastore to initialize datastore")
+		params = {
+			"factset_id" : factset_id
+		}
+		v = AppValidatorFactory().get_validator("get_fx_forward_info")
+		#-- validate input fields
+		if not v.validate(params):
+			message = "Input validation error. Details: " + str(v.errors)
+			self.logger.error(message)
+			raise ValueError(message)
+		#-- get the first value from the dictionary and return
+		fx_forward_l = self.fx_forward_services.query(params)
+		fx_forward = {}
+		if len(fx_forward_l) > 0:
+			fx_forward = fx_forward_l[0]
+		return fx_forward
+
+	def add_fx_forward_info(self, security_info):
+		if self.dbmode is None:
+			raise DataStoreNotYetInitializeError("Plase call initializeDatastore to initialize datastore")
+		v = AppValidatorFactory().get_validator("add_fx_forward_info")
+		if not v.validate(security_info):
+			message = "Input validation error. Details: " + str(v.errors)
+			self.logger.error(message)
+			raise ValueError(message)
+		#-- data parsing
+		#-- no data parsing need
+		#-- create data model
+		#-- reuse the security_info
+		self.fx_forward_services.create(security_info)
+		return 0
+
+	def update_fx_forward_info(self, security_info):
+		if self.dbmode is None:
+			raise DataStoreNotYetInitializeError("Plase call initializeDatastore to initialize datastore")
+		v = AppValidatorFactory().get_validator("update_fx_forward_info")
+		#-- validate input fields
+		if not v.validate(security_info):
+			message = "Input validation error. Details: " + str(v.errors)
+			self.logger.error(message)
+			raise ValueError(message)
+		#-- data parsing
+		#-- no data parsing need
+		#-- create data model
+		#-- reuse the security_info
+		self.fx_forward_services.update(security_info)
+		return 0
+	
+	def get_all_counter_party_info(self):
+		if self.dbmode is None:
+			raise DataStoreNotYetInitializeError("Plase call initializeDatastore to initialize datastore")
+		#-- no input parameter
+		#-- no input validation needs
+		#-- return list of counter party
+		otc_counter_party_l = self.otc_counter_party_services.query()
+		return otc_counter_party_l
+
+	def add_counter_party_info(self, counter_party_info):
+		if self.dbmode is None:
+			raise DataStoreNotYetInitializeError("Plase call initializeDatastore to initialize datastore")
+		v = AppValidatorFactory().get_validator("add_counter_party_info")
+		if not v.validate(counter_party_info):
+			message = "Input validation error. Details: " + str(v.errors)
+			self.logger.error(message)
+			raise ValueError(message)
+		#-- data parsing
+		#-- no data parsing need
+		#-- create data model
+		#-- reuse the counter_party_info
+		self.otc_counter_party_services.create(counter_party_info)
+		return 0
+
+	def update_counter_party_info(self, counter_party_info):
+		if self.dbmode is None:
+			raise DataStoreNotYetInitializeError("Plase call initializeDatastore to initialize datastore")
+		v = AppValidatorFactory().get_validator("update_counter_party_info")
+		#-- validate input fields
+		if not v.validate(counter_party_info):
+			message = "Input validation error. Details: " + str(v.errors)
+			self.logger.error(message)
+			raise ValueError(message)
+		#-- data parsing
+		#-- no data parsing need
+		#-- create data model
+		#-- reuse the counter_party_info
+		self.otc_counter_party_services.update(counter_party_info)
 		return 0

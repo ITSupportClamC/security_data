@@ -17,10 +17,18 @@ from security_data.data import (initialize_datastore,
 							update_futures_info,
 							get_fixed_deposit_info, 
 							add_fixed_deposit_info,
-							update_fixed_deposit_info)
+							update_fixed_deposit_info,
+							get_fx_forward_info, 
+							add_fx_forward_info,
+							update_fx_forward_info,
+							get_all_counter_party_info, 
+							add_counter_party_info,
+							update_counter_party_info)
 from security_data.models.security_base import SecurityBase
 from security_data.models.futures import Futures
 from security_data.models.fixed_deposit import FixedDeposit
+from security_data.models.fx_forward import FxForward
+from security_data.models.otc_counter_party import OtcCounterParty
 from security_data.utils.database import DBConn
 from security_data.utils.error_handling import (NoDataClearingInProuctionModeError,
                                             SecurityBaseAlreadyExistError,
@@ -28,7 +36,11 @@ from security_data.utils.error_handling import (NoDataClearingInProuctionModeErr
                                             FuturesAlreadyExistError,
                                             FuturesNotExistError,
                                             FixedDepositAlreadyExistError,
-                                            FixedDepositNotExistError)
+                                            FixedDepositNotExistError,
+                                            FxForwardAlreadyExistError,
+                                            FxForwardNotExistError,
+                                            OtcCounterPartyAlreadyExistError,
+                                            OtcCounterPartyNotExistError)
 from sqlalchemy import func
 from sqlalchemy.orm import sessionmaker
 
@@ -332,9 +344,9 @@ class TestFactSetData(unittest2.TestCase):
 		security_info = self._get_test_fixed_deposit()
 		with self.assertRaises(FixedDepositAlreadyExistError):
 			add_fixed_deposit_info(security_info)
-		#-- 3. test missing value in the field ticker
-		#--    when adding security base
-		#-- 3.1 empty ticker
+		#-- 3. test missing value in the field geneva_id
+		#--    when adding fixed deposit
+		#-- 3.1 empty geneva_id
 		security_info = self._get_test_fixed_deposit()
 		security_info["geneva_id"] = ""
 		with self.assertRaises(ValueError):
@@ -362,6 +374,18 @@ class TestFactSetData(unittest2.TestCase):
 		security_info["geneva_counter_party"] = ""
 		with self.assertRaises(ValueError):
 			add_fixed_deposit_info(security_info)
+		#-- 4. test adding fx forward with same counter party
+		#--    The system shall allow and skip the duplicated counter party error
+		security_info = self._get_test_fixed_deposit2()
+		self.assertEqual(add_fixed_deposit_info(security_info), 0)
+		#--    verify and suppose only 1 counter party exist
+		with DBConn.get_db(self.unittest_dbmode).connect() as con:
+			count = con.execute("""
+								SELECT count(*)  
+								FROM otc_counter_parties
+								""").scalar()
+			con.close()
+		self.assertEqual(count, 1)
 
 	def test_get_fixed_deposit_info(self):
 		#-- preparation by adding 2 securities
@@ -449,5 +473,294 @@ class TestFactSetData(unittest2.TestCase):
 			"starting_date" : "2021-01-01",
 			"maturity_date" : "2021-01-31",
 			"interest_rate" : 0.951
+		}
+		return security_info
+
+	#-- testcase for fx forward
+	def test_add_fx_forward_info(self):
+		#-- 1. normal creation
+		security_info = self._get_test_fx_forward()
+		self.assertEqual(add_fx_forward_info(security_info), 0)
+		#-- 2. test duplicated future insert raise FxForwardAlreadyExistError
+		security_info = self._get_test_fx_forward()
+		with self.assertRaises(FxForwardAlreadyExistError):
+			add_fx_forward_info(security_info)
+		#-- 3. test missing value in the field factset_id
+		#--    when adding fx forward
+		#-- 3.1 empty factset_id
+		security_info = self._get_test_fx_forward()
+		security_info["factset_id"] = ""
+		with self.assertRaises(ValueError):
+			add_fx_forward_info(security_info)
+		#-- 3.2 missing factset_id
+		security_info = {
+			"geneva_fx_forward_name" : "CNH per USD @ 6.55 NOMURA - 07/28/2021 40017",
+			"geneva_counter_party" : "INST-FI",
+			"starting_date" : "2021-04-21",
+			"maturity_date" : "2021-05-17",
+			"base_currency" : "USD",
+			"base_currency_quantity" : 348241.37,
+			"term_currency" : "CNH",
+			"term_currency_quantity" : 2350000.00,
+			"forward_rate" : 6.6051
+		}
+		with self.assertRaises(ValueError):
+			add_fx_forward_info(security_info)
+		#-- 3.2 missing an attribute such as geneva_counter_party
+		security_info = {
+			"factset_id" : "FXForward_1163847",
+			"geneva_fx_forward_name" : "CNH per USD @ 6.55 NOMURA - 07/28/2021 40017",
+			"starting_date" : "2021-04-21",
+			"maturity_date" : "2021-05-17",
+			"base_currency" : "USD",
+			"base_currency_quantity" : 348241.37,
+			"term_currency" : "CNH",
+			"term_currency_quantity" : 2350000.00,
+			"forward_rate" : 6.6051
+		}
+		#-- 3.2 empty attribute such as geneva_counter_party
+		security_info = self._get_test_fx_forward()
+		security_info["geneva_counter_party"] = ""
+		with self.assertRaises(ValueError):
+			add_fx_forward_info(security_info)
+		#-- 4. test adding fx forward with same counter party
+		#--    The system shall allow and skip the duplicated counter party error
+		security_info = self._get_test_fx_forward3()
+		self.assertEqual(add_fx_forward_info(security_info), 0)
+		#--    verify and suppose only 1 counter party exist
+		with DBConn.get_db(self.unittest_dbmode).connect() as con:
+			count = con.execute("""
+								SELECT count(*)  
+								FROM otc_counter_parties
+								""").scalar()
+			con.close()
+		self.assertEqual(count, 1)
+
+	def test_get_fx_forward_info(self):
+		#-- preparation by adding 2 securities
+		security_info = self._get_test_fx_forward()
+		add_fx_forward_info(security_info)
+		security_info = self._get_test_fx_forward2()
+		add_fx_forward_info(security_info)
+		security_info = self._get_test_fx_forward3()
+		add_fx_forward_info(security_info)
+		#-- 1. normal get by geneva_id and verify the result
+		d = get_fx_forward_info("FXForward_000003")
+		self.assertEqual(d["factset_id"], "FXForward_000003")
+		self.assertEqual(d["geneva_fx_forward_name"], "CNH per USD @ 5.01 Testing")
+		self.assertEqual(d["geneva_counter_party"],  "INST-FI")
+		self.assertEqual(d["starting_date"],  "2020-04-21")
+		self.assertEqual(d["maturity_date"], "2020-05-17")
+		self.assertEqual(d["base_currency"], "USD")
+		self.assertEqual(d["base_currency_quantity"], 500000.37)
+		self.assertEqual(d["term_currency"], "CNH")
+		self.assertEqual(d["term_currency_quantity"], 6000000.01)
+		self.assertEqual(d["forward_rate"], 5.01)
+		#-- 2. no result return
+		self.assertEqual(get_fx_forward_info("FXForward_000004"), {})
+		#-- 3. missing input
+		with self.assertRaises(ValueError):
+			get_fx_forward_info("")
+
+	def test_update_fx_forward_info(self):
+		#-- preparation by adding 2 securities
+		security_info = self._get_test_fx_forward()
+		add_fx_forward_info(security_info)
+		security_info = self._get_test_fx_forward2()
+		add_fx_forward_info(security_info)
+		#-- 1. normal update succeeded
+		security_info = {
+			"factset_id" : "FXForward_1163847",
+			"starting_date" : "2022-04-21",
+			"maturity_date" : "2022-05-17",
+			"base_currency" : "USDD",
+			"base_currency_quantity" : 348241.373,
+			"term_currency" : "CNHH",
+			"term_currency_quantity" : 2350000.001,
+			"forward_rate" : 6.60511
+		}
+		self.assertEqual(update_fx_forward_info(security_info), 0)
+		d = get_fx_forward_info("FXForward_1163847")
+		#-- verify only the updated fields get updated
+		self.assertEqual(d["factset_id"], "FXForward_1163847")
+		self.assertEqual(d["starting_date"], "2022-04-21")
+		self.assertEqual(d["maturity_date"], "2022-05-17")
+		self.assertEqual(d["base_currency"], "USDD")
+		self.assertEqual(d["base_currency_quantity"], 348241.373)
+		self.assertEqual(d["term_currency"], "CNHH")
+		self.assertEqual(d["term_currency_quantity"], 2350000.001)
+		self.assertEqual(d["forward_rate"], 6.60511)
+		#-- 2. test invalid input 
+		#-- 2.1 string vlaue for forward_rate
+		security_info = {
+			"factset_id" :"FXForward_1163847",
+			"forward_rate" : "wrong input"
+		}
+		with self.assertRaises(ValueError):
+			update_fx_forward_info(security_info)
+		#-- 2.2 factset_id not exist
+		security_info = {
+			"factset_id" :"unknown factset_id",
+			"forward_rate" : 10.11
+		}
+		with self.assertRaises(FxForwardNotExistError):
+			update_fx_forward_info(security_info)
+		#-- 2.3 submit empty update field
+		security_info = {
+			"factset_id" : "unknown factset_id",
+			"geneva_fx_forward_name" : ""
+		}
+		with self.assertRaises(ValueError):
+			update_fx_forward_info(security_info)
+
+	def _get_test_fx_forward(self):
+		security_info = {
+			"factset_id" : "FXForward_1163847",
+			"geneva_fx_forward_name" : "CNH per USD @ 6.55 NOMURA - 07/28/2021 40017",
+			"geneva_counter_party" : "INST-FI",
+			"starting_date" : "2021-04-21",
+			"maturity_date" : "2021-05-17",
+			"base_currency" : "USD",
+			"base_currency_quantity" : 348241.37,
+			"term_currency" : "CNH",
+			"term_currency_quantity" : 2350000.00,
+			"forward_rate" : 6.6051
+		}
+		return security_info
+		
+	def _get_test_fx_forward2(self):
+		security_info = {
+			"factset_id" : "FXForward_000002",
+			"geneva_fx_forward_name" : "CNH per USD @ 5.01 Testing",
+			"geneva_counter_party" : "diff-counter-party",
+			"starting_date" : "2020-04-21",
+			"maturity_date" : "2020-05-17",
+			"base_currency" : "USD",
+			"base_currency_quantity" : 500000.37,
+			"term_currency" : "CNH",
+			"term_currency_quantity" : 6000000.01,
+			"forward_rate" : 5.01
+		}
+		return security_info
+		
+	def _get_test_fx_forward3(self):
+		security_info = {
+			"factset_id" : "FXForward_000003",
+			"geneva_fx_forward_name" : "CNH per USD @ 5.01 Testing",
+			"geneva_counter_party" : "INST-FI",
+			"starting_date" : "2020-04-21",
+			"maturity_date" : "2020-05-17",
+			"base_currency" : "USD",
+			"base_currency_quantity" : 500000.37,
+			"term_currency" : "CNH",
+			"term_currency_quantity" : 6000000.01,
+			"forward_rate" : 5.01
+		}
+		return security_info
+
+	#-- testcase for otc counter party
+	def test_add_counter_party_info(self):
+		#-- 1. normal creation
+		security_info = self._get_test_counter_party()
+		self.assertEqual(add_counter_party_info(security_info), 0)
+		#-- 2. test duplicated future insert raise FxForwardAlreadyExistError
+		security_info = self._get_test_counter_party()
+		with self.assertRaises(OtcCounterPartyAlreadyExistError):
+			add_counter_party_info(security_info)
+		#-- 3. test missing value in the field factset_id
+		#--    when adding fx forward
+		#-- 3.1 empty geneva_party_type
+		security_info = self._get_test_counter_party()
+		security_info["geneva_party_type"] = ""
+		with self.assertRaises(ValueError):
+			add_counter_party_info(security_info)
+		#-- 3.2 missing geneva_counter_party
+		security_info = {
+			"geneva_party_type" : "Repo",
+			"geneva_party_name" : "Industrial Bank of China",
+			"bloomberg_ticker" : "601166 CH"
+		}
+		with self.assertRaises(ValueError):
+			add_counter_party_info(security_info)
+		#-- 3.3 empty an attribute such as geneva_party_name
+		security_info = {
+			"geneva_counter_party" : "BNP-REPO",
+			"geneva_party_type" : "Repo",
+			"geneva_party_name" : "",
+			"bloomberg_ticker" : "testing ticker"
+		}
+
+	def test_get_all_counter_party_info(self):
+		#-- preparation by adding 2 securities
+		#-- 1. no result return
+		self.assertEqual(get_all_counter_party_info(), [])
+		security_info = self._get_test_counter_party()
+		add_counter_party_info(security_info)
+		security_info = self._get_test_counter_party2()
+		add_counter_party_info(security_info)
+		#-- 2. normal get all counter party and check result
+		d = get_all_counter_party_info()
+		self.assertEqual(d[0]["geneva_counter_party"], "BNP-REPO")
+		self.assertEqual(d[0]["geneva_party_type"], "Repo")
+		self.assertEqual(d[0]["geneva_party_name"], "Industrial Bank of China")
+		self.assertEqual(d[0]["bloomberg_ticker"], "601166 CH")
+		self.assertEqual(d[1]["geneva_counter_party"], "INST-FI")
+		self.assertEqual(d[1]["geneva_party_type"], "Fixed Deposit")
+		self.assertEqual(d[1]["geneva_party_name"], "test geneva_party_name")
+		self.assertEqual(d[1]["bloomberg_ticker"], "test bloomberg_ticker")
+
+	def test_update_counter_party_info(self):
+		#-- preparation by adding 2 securities
+		security_info = self._get_test_counter_party()
+		add_counter_party_info(security_info)
+		security_info = self._get_test_counter_party2()
+		add_counter_party_info(security_info)
+		#-- 1. normal update succeeded
+		security_info = {
+			"geneva_counter_party" : "INST-FI",
+			"geneva_party_type" : "Fixed Deposit",
+			"geneva_party_name" : "testing 1",
+			"bloomberg_ticker" : "testing 2"
+		}
+		self.assertEqual(update_counter_party_info(security_info), 0)
+		d = get_all_counter_party_info()
+		#-- verify only the updated fields get updated
+		self.assertEqual(d[1]["geneva_counter_party"], "INST-FI")
+		self.assertEqual(d[1]["geneva_party_type"], "Fixed Deposit")
+		self.assertEqual(d[1]["geneva_party_name"], "testing 1")
+		self.assertEqual(d[1]["bloomberg_ticker"], "testing 2")
+		#-- 2. test invalid input 
+		#-- 2.1 geneva_party_type not match
+		security_info = {
+			"geneva_counter_party" :"INST-FI",
+			"geneva_party_type" : "Repo",
+			"geneva_party_name" : "testing 123"
+		}
+		with self.assertRaises(OtcCounterPartyNotExistError):
+			update_counter_party_info(security_info)
+		#-- 2.2 geneva_party_type not exist
+		security_info = {
+			"geneva_counter_party" :"unknown",
+			"geneva_party_type" : "Repo",
+			"geneva_party_name" : "testing 123"
+		}
+		with self.assertRaises(OtcCounterPartyNotExistError):
+			update_counter_party_info(security_info)
+
+	def _get_test_counter_party(self):
+		security_info = {
+			"geneva_counter_party" : "BNP-REPO",
+			"geneva_party_type" : "Repo",
+			"geneva_party_name" : "Industrial Bank of China",
+			"bloomberg_ticker" : "601166 CH"
+		}
+		return security_info
+		
+	def _get_test_counter_party2(self):
+		security_info = {
+			"geneva_counter_party" : "INST-FI",
+			"geneva_party_type" : "Fixed Deposit",
+			"geneva_party_name" : "test geneva_party_name",
+			"bloomberg_ticker" : "test bloomberg_ticker"
 		}
 		return security_info

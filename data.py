@@ -1,7 +1,6 @@
 ﻿# coding=utf-8
 # 
 import logging
-from security_data.constants import Constants
 from security_data.controllers import AppController
 
 #controller supposed to be stateless so it is safe to have a singleton , one for all users 
@@ -76,7 +75,7 @@ def add_futures_info(security_info):
 
 	Side effect: add security info to datastore
 
-	Throws: SecurityInfoAlreadyExistError
+	Throws: FuturesAlreadyExistError
 	"""
 	return controller.add_futures_info(security_info)
 
@@ -88,7 +87,7 @@ def update_futures_info(security_info):
 
 	Side effect: update the security info to datastore
 
-	Throws: SecurityInfoNotExistError
+	Throws: FuturesNotExistError
 	"""
 	return controller.update_futures_info(security_info)
 
@@ -108,7 +107,7 @@ def add_fixed_deposit_info(security_info):
 
 	Side effect: add security info to datastore
 
-	Throws: SecurityInfoAlreadyExistError
+	Throws: FixedDepositAlreadyExistError
 	"""
 	return controller.add_fixed_deposit_info(security_info)
 
@@ -120,6 +119,70 @@ def update_fixed_deposit_info(security_info):
 
 	Side effect: update the security info to datastore
 
-	Throws: SecurityInfoNotExistError
+	Throws: FixedDepositInfoNotExistError
 	"""
 	return controller.update_fixed_deposit_info(security_info)
+
+	
+
+def get_fx_forward_info(factset_id):
+	"""
+	[String] factset_id => [Dictionary] security info
+	"""
+	return controller.get_fx_forward_info(factset_id)
+
+
+
+def add_fx_forward_info(security_info):
+	"""
+	[Dictionary] security info
+
+	Side effect: add FX Forward to datastore
+
+	Throws: FxForwardAlreadyExistError
+	"""
+	return controller.add_fx_forward_info(security_info)
+
+
+
+def update_fx_forward_info(security_info):
+	"""
+	[Dictionary] security info
+
+	Side effect: update the FX Forward to datastore
+
+	Throws: FxForwardNotExistError
+	"""
+	return controller.update_fx_forward_info(security_info)
+	
+
+
+def get_all_counter_party_info():
+	"""
+	No argument => [List][Dictionary] security info
+	"""
+	return controller.get_all_counter_party_info()
+
+
+
+def add_counter_party_info(counter_party):
+	"""
+	[Dictionary] counter party
+
+	Side effect: add counter party to datastore
+
+	Throws: OtcCounterPartyAlreadyExistError
+	"""
+	return controller.add_counter_party_info(counter_party)
+
+
+
+def update_counter_party_info(counter_party):
+	"""
+	[Dictionary] counter party
+
+	Side effect: update counter party to datastore
+
+	Throws: OtcCounterPartyNotExistError
+	"""
+	return controller.update_counter_party_info(counter_party)

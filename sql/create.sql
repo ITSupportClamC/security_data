@@ -1,6 +1,8 @@
 -- drop table security_base;
 -- drop table futures;
 -- drop table fixed_deposits;
+-- drop table fx_forwards;
+-- drop table otc_counter_parties;
 
 CREATE TABLE `security_base` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
@@ -54,4 +56,38 @@ CREATE TABLE `fixed_deposits` (
 	`updated_by` int(11) unsigned DEFAULT NULL,
 	PRIMARY KEY (`id`),
 	UNIQUE KEY `udx_fixed_deposits__geneva_id` (`geneva_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `fx_forwards` (
+	`id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+	`factset_id` varchar(100) NOT NULL,
+	`geneva_fx_forward_name` varchar(100) NOT NULL,
+	`geneva_counter_party` varchar(100) NOT NULL,
+	`starting_date` datetime NOT NULL,
+	`maturity_date` datetime NOT NULL,
+	`base_currency` varchar(5) NOT NULL,
+	`base_currency_quantity` decimal(18,6) NOT NULL,
+	`term_currency`varchar(5) NOT NULL,
+	`term_currency_quantity` decimal(18,6) NOT NULL,
+	`forward_rate` decimal(18,6) NOT NULL,
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	`created_by` int(11) unsigned DEFAULT NULL,
+	`updated_by` int(11) unsigned DEFAULT NULL,
+	PRIMARY KEY (`id`),
+	UNIQUE KEY `udx_fx_forwards__factset_id` (`factset_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `otc_counter_parties` (
+	`id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+	`geneva_counter_party` varchar(100) NOT NULL,
+	`geneva_party_type` varchar(100) NOT NULL,
+	`geneva_party_name` varchar(100) default NULL,
+	`bloomberg_ticker` varchar(50) default NULL,
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	`created_by` int(11) unsigned DEFAULT NULL,
+	`updated_by` int(11) unsigned DEFAULT NULL,
+	PRIMARY KEY (`id`),
+	UNIQUE KEY `udx_otc_counter_parties__geneva_counter_party_geneva_party_type` (`geneva_counter_party`, `geneva_party_type`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

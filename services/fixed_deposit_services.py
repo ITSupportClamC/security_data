@@ -1,16 +1,19 @@
 # coding=utf-8
 # 
 import logging
-from security_data.models.fixed_deposit import FixedDeposit
 from sqlalchemy.orm import sessionmaker
+from security_data.constants import Constants
 from security_data.utils.error_handling import (FixedDepositAlreadyExistError,
-											FixedDepositNotExistError)
+											FixedDepositNotExistError,
+											OtcCounterPartyAlreadyExistError)
+from security_data.models.fixed_deposit import FixedDeposit
 
 class FixedDepositServices:
 
-	def __init__(self, db):
+	def __init__(self, db, otc_counter_party_services):
 		self.logger = logging.getLogger(__name__)
 		self.db = db
+		self.otc_counter_party_services = otc_counter_party_services
 		
 	def delete_all(self):
 		try:
@@ -35,6 +38,18 @@ class FixedDepositServices:
 			else:
 				fixed_deposit = FixedDeposit(**security_info)
 				session.add(fixed_deposit)
+				#-- add the otc counter party
+				try:
+					otc_counter_party_info = {
+						"geneva_counter_party" : security_info['geneva_counter_party'],
+						"geneva_party_type" : Constants.COUNTER_PARTY_SECURITY_TYPE_FIXED_DEPOSIT
+					}
+					self.otc_counter_party_services.create(otc_counter_party_info, session)
+				except OtcCounterPartyAlreadyExistError:
+					#-- Skip the error in case the OTC Counter Party already exist
+					#-- Other error trigger throwing exception and no commit
+					self.logger.warn("Record (" + security_info['geneva_counter_party'] + "," + \
+						 Constants.COUNTER_PARTY_SECURITY_TYPE_FIXED_DEPOSIT + ") already exists. Skip adding.")
 				session.commit()
 				self.logger.info("Record " + security_info['geneva_id'] + " added successfully")
 		except FixedDepositAlreadyExistError:
