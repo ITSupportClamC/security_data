@@ -23,12 +23,16 @@ from security_data.data import (initialize_datastore,
 							update_fx_forward_info,
 							get_all_counter_party_info, 
 							add_counter_party_info,
-							update_counter_party_info)
+							update_counter_party_info,
+							get_security_attribute, 
+							add_security_attribute,
+							update_security_attribute)
 from security_data.models.security_base import SecurityBase
 from security_data.models.futures import Futures
 from security_data.models.fixed_deposit import FixedDeposit
 from security_data.models.fx_forward import FxForward
 from security_data.models.otc_counter_party import OtcCounterParty
+from security_data.models.security_attribute import SecurityAttribute
 from security_data.utils.database import DBConn
 from security_data.utils.error_handling import (NoDataClearingInProuctionModeError,
                                             SecurityBaseAlreadyExistError,
@@ -40,7 +44,9 @@ from security_data.utils.error_handling import (NoDataClearingInProuctionModeErr
                                             FxForwardAlreadyExistError,
                                             FxForwardNotExistError,
                                             OtcCounterPartyAlreadyExistError,
-                                            OtcCounterPartyNotExistError)
+                                            OtcCounterPartyNotExistError,
+                                            SecurityAttributeAlreadyExistError,
+                                            SecurityAttributeNotExistError)
 from sqlalchemy import func
 from sqlalchemy.orm import sessionmaker
 
@@ -82,6 +88,9 @@ class TestFactSetData(unittest2.TestCase):
 		self.assertEqual(0, session.query(func.count(SecurityBase.id)).scalar())
 		self.assertEqual(0, session.query(func.count(Futures.id)).scalar())
 		self.assertEqual(0, session.query(func.count(FixedDeposit.id)).scalar())
+		self.assertEqual(0, session.query(func.count(FxForward.id)).scalar())
+		self.assertEqual(0, session.query(func.count(OtcCounterParty.id)).scalar())
+		self.assertEqual(0, session.query(func.count(SecurityAttribute.id)).scalar())
 
 	def test_add_security_basic_info(self):
 		#-- 1. normal creation
@@ -378,6 +387,7 @@ class TestFactSetData(unittest2.TestCase):
 		#--    The system shall allow and skip the duplicated counter party error
 		security_info = self._get_test_fixed_deposit2()
 		self.assertEqual(add_fixed_deposit_info(security_info), 0)
+		count = -1
 		#--    verify and suppose only 1 counter party exist
 		with DBConn.get_db(self.unittest_dbmode).connect() as con:
 			count = con.execute("""
@@ -528,6 +538,7 @@ class TestFactSetData(unittest2.TestCase):
 		security_info = self._get_test_fx_forward3()
 		self.assertEqual(add_fx_forward_info(security_info), 0)
 		#--    verify and suppose only 1 counter party exist
+		count = -1
 		with DBConn.get_db(self.unittest_dbmode).connect() as con:
 			count = con.execute("""
 								SELECT count(*)  
@@ -762,5 +773,317 @@ class TestFactSetData(unittest2.TestCase):
 			"geneva_party_type" : "Fixed Deposit",
 			"geneva_party_name" : "test geneva_party_name",
 			"bloomberg_ticker" : "test bloomberg_ticker"
+		}
+		return security_info
+
+	#-- testcase for security attribute
+	def test_add_security_attribute(self):
+		#-- 1. normal creation
+		#-- 1.1. normal creation
+		security_info = self._get_test_security_attribute()
+		self.assertEqual(add_security_attribute(security_info), 0)
+		#-- 1.2. only have the required attribute
+		security_info = {
+			"security_id_type" : "Bloomberg Id",
+			"security_id" : "security_id test 1"
+		}
+		self.assertEqual(add_security_attribute(security_info), 0)
+		#-- 1.2. only have the required attribute and some non-required attributes
+		security_info = {
+			"security_id_type" : "Ticker",
+			"security_id" : "security_id test 2",
+			"gics_sector" : "gics_sector test 2"
+		}
+		self.assertEqual(add_security_attribute(security_info), 0)
+		#--    verify there are 3 security attribute
+		count = -1
+		with DBConn.get_db(self.unittest_dbmode).connect() as con:
+			count = con.execute("""
+								SELECT count(*)  
+								FROM security_attributes
+								""").scalar()
+			con.close()
+		self.assertEqual(count, 3)
+		#-- 2. test duplicated future insert raise SecurityAttributeAlreadyExistError
+		security_info = self._get_test_security_attribute()
+		with self.assertRaises(SecurityAttributeAlreadyExistError):
+			add_security_attribute(security_info)
+		#-- 3. test missing value in the field security_id
+		#--    when adding Security Attribute
+		#-- 3.1 empty security_id
+		security_info = self._get_test_security_attribute()
+		security_info["security_id"] = ""
+		with self.assertRaises(ValueError):
+			add_security_attribute(security_info)
+		#-- 3.1 empty security_type_id
+		security_info = self._get_test_security_attribute()
+		security_info["security_type_id"] = ""
+		with self.assertRaises(ValueError):
+			add_security_attribute(security_info)
+		#-- 3.2 missing security_type_id
+		security_info = {
+			"security_id" : "Test 1",
+			"trading_volume_90_days" : 1000.00
+		}
+		with self.assertRaises(ValueError):
+			add_security_attribute(security_info)
+		#-- 3.3 unknown security_type_id
+		security_info = {
+			"security_type_id" : "Unknown Type",
+			"security_id" : "security_id Test 2",
+			"trading_volume_90_days" : 10000000.00
+		}
+		with self.assertRaises(ValueError):
+			add_security_attribute(security_info)
+
+	def test_get_security_attribute(self):
+		#-- preparation by adding 2 securities
+		security_info = self._get_test_security_attribute()
+		add_security_attribute(security_info)
+		security_info = self._get_test_security_attribute2()
+		add_security_attribute(security_info)
+		#-- 1. normal get by geneva_id and verify the result
+		d = get_security_attribute("ISIN", "XS1936784161")
+		self.assertEqual(d["security_id_type"], "ISIN")
+		self.assertEqual(d["security_id"], "XS1936784161")
+		self.assertEqual(d["gics_sector"], "Financials")
+		self.assertEqual(d["gics_industry_group"], "Banks")
+		self.assertEqual(d["industry_sector"], "Financial")
+		self.assertEqual(d["industry_group"], "Banks")
+		self.assertEqual(d["bics_sector_level_1"], "Financial")
+		self.assertEqual(d["bics_industry_group_level_2"], "Banks")
+		self.assertEqual(d["bics_industry_name_level_3"], "")
+		self.assertEqual(d["bics_sub_industry_name_level_4"], "")
+		self.assertEqual(d["parent_symbol"], "CEHIOZ CH")
+		self.assertEqual(d["parent_symbol_chinese_name"], "中央匯金投資有限責任公司")
+		self.assertEqual(d["parent_symbol_industry_group"], "Investment Companies")
+		self.assertEqual(d["cast_parent_company_name"], "China Construction Bank Corp")
+		self.assertEqual(d["country_of_risk"], "CN")
+		self.assertEqual(d["country_of_issuance"], "CN")
+		self.assertEqual(d["sfc_region"], "China Mainland")
+		self.assertEqual(d["s_p_issuer_rating"], "A")
+		self.assertEqual(d["moody_s_issuer_rating"], "")
+		self.assertEqual(d["fitch_s_issuer_rating"], "A")
+		self.assertEqual(d["bond_or_equity_ticker"], "CCB")
+		self.assertEqual(d["s_p_rating"], "BBB+")
+		self.assertEqual(d["moody_s_rating"], "")
+		self.assertEqual(d["fitch_rating"], "BBB+")
+		self.assertEqual(d["payment_rank"], "Subordinated")
+		self.assertEqual(d["payment_rank_mbs"], "")
+		self.assertEqual(d["bond_classification"], "")
+		self.assertEqual(d["local_government_lgfv"], "Beijing")
+		self.assertEqual(d["first_year_default_probability"], 0.000172683)
+		self.assertEqual(d["contingent_capital"], "")
+		self.assertEqual(d["co_co_bond_trigger"], "")
+		self.assertEqual(d["capit_type_conti_conv_tri_lvl"], "")
+		self.assertEqual(d["tier_1_common_equity_ratio"], 0)
+		self.assertEqual(d["bail_in_capital_indicator"], "")
+		self.assertEqual(d["tlac_mrel_designation"], "")
+		self.assertEqual(d["classif_on_chi_state_owned_enterp"], "Sovereign")
+		self.assertEqual(d["private_placement_indicator"], "N")
+		self.assertEqual(d["trading_volume_90_days"], 24634300)
+		#-- 2. no result return
+		self.assertEqual(get_security_attribute("ISIN", "wrong value"), {})
+		#-- 3. missing input
+		with self.assertRaises(ValueError):
+			get_security_attribute("","")
+
+	def test_update_security_attribute(self):
+		#-- preparation by adding 2 securities
+		security_info = self._get_test_security_attribute()
+		add_security_attribute(security_info)
+		security_info = self._get_test_security_attribute2()
+		add_security_attribute(security_info)
+		#-- 1. normal update succeeded
+		security_info = {
+			"security_id_type" : "Ticker",
+			"security_id" : "Ticker Test 1",
+			"gics_sector" : "Financials updated",
+			"gics_industry_group" : "Banks updated",
+			"industry_sector" : "Financial updated",
+			"industry_group" : "Banks updated",
+			"bics_sector_level_1" : "Financial updated",
+			"bics_industry_group_level_2" : "Banks updated",
+			"bics_industry_name_level_3" : " updated",
+			"bics_sub_industry_name_level_4" : " updated",
+			"parent_symbol" : "CEHIOZ CH updated",
+			"parent_symbol_chinese_name" : "中央匯金投資有限責任公司 updated",
+			"parent_symbol_industry_group" : "Investment Companies updated",
+			"cast_parent_company_name" : "China Construction Bank Corp updated",
+			"country_of_risk" : "CN updated",
+			"country_of_issuance" : "CN updated",
+			"sfc_region" : "China Mainland updated",
+			"s_p_issuer_rating" : "A updated",
+			"moody_s_issuer_rating" : " updated",
+			"fitch_s_issuer_rating" : "A updated",
+			"bond_or_equity_ticker" : "CCB updated",
+			"s_p_rating" : "BBB+ updated",
+			"moody_s_rating" : "updated",
+			"fitch_rating" : "BBB+ updated",
+			"payment_rank" : "Subordinated updated",
+			"payment_rank_mbs" : "updated",
+			"bond_classification" : "updated",
+			"local_government_lgfv" : "Beijing updated",
+			"first_year_default_probability" : 0.000000001,
+			"contingent_capital" : "updated",
+			"co_co_bond_trigger" : "updated",
+			"capit_type_conti_conv_tri_lvl" : "updated",
+			"tier_1_common_equity_ratio" : 0.30,
+			"bail_in_capital_indicator" : "updated",
+			"tlac_mrel_designation" : "updated",
+			"classif_on_chi_state_owned_enterp" : "Sovereign updated",
+			"private_placement_indicator" : "Y",
+			"trading_volume_90_days" : 100000000
+		}
+		self.assertEqual(update_security_attribute(security_info), 0)
+		d = get_security_attribute("Ticker", "Ticker Test 1")
+		#-- verify only the updated fields get updated
+		self.assertEqual(d["security_id_type"], "Ticker")
+		self.assertEqual(d["security_id"], "Ticker Test 1")
+		self.assertEqual(d["gics_sector"], "Financials updated")
+		self.assertEqual(d["gics_industry_group"], "Banks updated")
+		self.assertEqual(d["industry_sector"], "Financial updated")
+		self.assertEqual(d["industry_group"], "Banks updated")
+		self.assertEqual(d["bics_sector_level_1"], "Financial updated")
+		self.assertEqual(d["bics_industry_group_level_2"], "Banks updated")
+		self.assertEqual(d["bics_industry_name_level_3"], " updated")
+		self.assertEqual(d["bics_sub_industry_name_level_4"], " updated")
+		self.assertEqual(d["parent_symbol"], "CEHIOZ CH updated")
+		self.assertEqual(d["parent_symbol_chinese_name"], "中央匯金投資有限責任公司 updated")
+		self.assertEqual(d["parent_symbol_industry_group"], "Investment Companies updated")
+		self.assertEqual(d["cast_parent_company_name"], "China Construction Bank Corp updated")
+		self.assertEqual(d["country_of_risk"], "CN updated")
+		self.assertEqual(d["country_of_issuance"], "CN updated")
+		self.assertEqual(d["sfc_region"], "China Mainland updated")
+		self.assertEqual(d["s_p_issuer_rating"], "A updated")
+		self.assertEqual(d["moody_s_issuer_rating"], " updated")
+		self.assertEqual(d["fitch_s_issuer_rating"], "A updated")
+		self.assertEqual(d["bond_or_equity_ticker"], "CCB updated")
+		self.assertEqual(d["s_p_rating"], "BBB+ updated")
+		self.assertEqual(d["moody_s_rating"], "updated")
+		self.assertEqual(d["fitch_rating"], "BBB+ updated")
+		self.assertEqual(d["payment_rank"], "Subordinated updated")
+		self.assertEqual(d["payment_rank_mbs"], "updated")
+		self.assertEqual(d["bond_classification"], "updated")
+		self.assertEqual(d["local_government_lgfv"], "Beijing updated")
+		self.assertEqual(d["first_year_default_probability"], 0.000000001)
+		self.assertEqual(d["contingent_capital"], "updated")
+		self.assertEqual(d["co_co_bond_trigger"], "updated")
+		self.assertEqual(d["capit_type_conti_conv_tri_lvl"], "updated")
+		self.assertEqual(d["tier_1_common_equity_ratio"], 0.30)
+		self.assertEqual(d["bail_in_capital_indicator"], "updated")
+		self.assertEqual(d["tlac_mrel_designation"], "updated")
+		self.assertEqual(d["classif_on_chi_state_owned_enterp"], "Sovereign updated")
+		self.assertEqual(d["private_placement_indicator"], "Y")
+		self.assertEqual(d["trading_volume_90_days"], 100000000)
+		#-- 2. test invalid input 
+		#-- 2.1 string vlaue for trading_volume_90_days
+		security_info = {
+			"security_id_type" : "Ticker",
+			"security_id" : "Ticker Test 1",
+			"trading_volume_90_days" : "wrong input"
+		}
+		with self.assertRaises(ValueError):
+			update_security_attribute(security_info)
+		#-- 2.2 security_id_type unknown type
+		security_info = {
+			"security_id_type" : "unknown ticker",
+			"security_id" : "Ticker Test 1",
+			"trading_volume_90_days" : 1.0
+		}
+		with self.assertRaises(ValueError):
+			update_security_attribute(security_info)
+		#-- 2.3 security_id does not exist
+		security_info = {
+			"security_id_type" : "Ticker",
+			"security_id" : "Ticker Test XXX",
+			"trading_volume_90_days" : 1.0
+		}
+		with self.assertRaises(SecurityAttributeNotExistError):
+			update_security_attribute(security_info)
+
+	def _get_test_security_attribute(self):
+		security_info = {
+			"security_id_type" : "ISIN",
+			"security_id" : "XS1936784161",
+			"gics_sector" : "Financials",
+			"gics_industry_group" : "Banks",
+			"industry_sector" : "Financial",
+			"industry_group" : "Banks",
+			"bics_sector_level_1" : "Financial",
+			"bics_industry_group_level_2" : "Banks",
+			"bics_industry_name_level_3" : "",
+			"bics_sub_industry_name_level_4" : "",
+			"parent_symbol" : "CEHIOZ CH",
+			"parent_symbol_chinese_name" : "中央匯金投資有限責任公司",
+			"parent_symbol_industry_group" : "Investment Companies",
+			"cast_parent_company_name" : "China Construction Bank Corp",
+			"country_of_risk" : "CN",
+			"country_of_issuance" : "CN",
+			"sfc_region" : "China Mainland",
+			"s_p_issuer_rating" : "A",
+			"moody_s_issuer_rating" : "",
+			"fitch_s_issuer_rating" : "A",
+			"bond_or_equity_ticker" : "CCB",
+			"s_p_rating" : "BBB+",
+			"moody_s_rating" : "",
+			"fitch_rating" : "BBB+",
+			"payment_rank" : "Subordinated",
+			"payment_rank_mbs" : "",
+			"bond_classification" : "",
+			"local_government_lgfv" : "Beijing",
+			"first_year_default_probability" : 0.000172683,
+			"contingent_capital" : "",
+			"co_co_bond_trigger" : "",
+			"capit_type_conti_conv_tri_lvl" : "",
+			"tier_1_common_equity_ratio" : 0,
+			"bail_in_capital_indicator" : "",
+			"tlac_mrel_designation" : "",
+			"classif_on_chi_state_owned_enterp" : "Sovereign",
+			"private_placement_indicator" : "N",
+			"trading_volume_90_days" : 24634300
+		}
+		return security_info
+		
+	def _get_test_security_attribute2(self):
+		security_info = {
+			"security_id_type" : "Ticker",
+			"security_id" : "Ticker Test 1",
+			"gics_sector" : "",
+			"gics_industry_group" : "Banks Test 1",
+			"industry_sector" : "Financial",
+			"industry_group" : "Banks",
+			"bics_sector_level_1" : "Financial",
+			"bics_industry_group_level_2" : "Banks",
+			"bics_industry_name_level_3" : "",
+			"bics_sub_industry_name_level_4" : "",
+			"parent_symbol" : "CEHIOZ CH",
+			"parent_symbol_chinese_name" : "中央匯金投資有限責任公司",
+			"parent_symbol_industry_group" : "Investment Companies",
+			"cast_parent_company_name" : "China Construction Bank Corp",
+			"country_of_risk" : "CN",
+			"country_of_issuance" : "CN",
+			"sfc_region" : "China Mainland",
+			"s_p_issuer_rating" : "A",
+			"moody_s_issuer_rating" : "",
+			"fitch_s_issuer_rating" : "A",
+			"bond_or_equity_ticker" : "CCB",
+			"s_p_rating" : "BBB+",
+			"moody_s_rating" : "",
+			"fitch_rating" : "BBB+",
+			"payment_rank" : "Subordinated",
+			"payment_rank_mbs" : "",
+			"bond_classification" : "",
+			"local_government_lgfv" : "Beijing",
+			"first_year_default_probability" : 0.000000003,
+			"contingent_capital" : "",
+			"co_co_bond_trigger" : "",
+			"capit_type_conti_conv_tri_lvl" : "",
+			"tier_1_common_equity_ratio" : 0,
+			"bail_in_capital_indicator" : "",
+			"tlac_mrel_designation" : "",
+			"classif_on_chi_state_owned_enterp" : "Sovereign",
+			"private_placement_indicator" : "N",
+			"trading_volume_90_days" : 24634300
 		}
 		return security_info

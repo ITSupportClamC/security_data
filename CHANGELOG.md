@@ -23,3 +23,12 @@
   - When adding FX Forward, all fields are required and non-empty
   - When adding OTC Counter Party, the fields `geneva_party_name` and `bloomberg_ticker` are optional fields
   - Update SQL add to the `create.sql` in the folder `sql`
+
+## v1.2.0
+
+### Changed
+
+- Include Security Attribute
+- Notes:
+  - In the functions `add_security_attribute` and `update_security_attribute`, only `security_id_type` and `security_id` are required fields
+  - Update SQL add to the `create.sql` in the folder `sql`

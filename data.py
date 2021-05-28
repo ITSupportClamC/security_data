@@ -186,3 +186,35 @@ def update_counter_party_info(counter_party):
 	Throws: OtcCounterPartyNotExistError
 	"""
 	return controller.update_counter_party_info(counter_party)
+
+	
+
+def get_security_attribute(security_id_type, security_id):
+	"""
+	[String] security id type, [String] security id => [Dictionary] security attribute
+	"""
+	return controller.get_security_attribute(security_id_type, security_id)
+
+
+
+def add_security_attribute(security_attribute_info):
+	"""
+	[Dictionary] security attribute
+
+	Side effect: add Security Attribute to datastore
+
+	Throws: SecurityAttributeAlreadyExistError
+	"""
+	return controller.add_security_attribute(security_attribute_info)
+
+
+
+def update_security_attribute(security_attribute_info):
+	"""
+	[Dictionary] security attribute
+
+	Side effect: update Security Attribute to datastore
+
+	Throws: SecurityAttributeNotExistError
+	"""
+	return controller.update_security_attribute(security_attribute_info)

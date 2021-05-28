@@ -47,3 +47,11 @@ class OtcCounterPartyAlreadyExistError(Exception):
 class OtcCounterPartyNotExistError(Exception):
     def __init__(self, msg):
         super().__init__(msg)
+
+class SecurityAttributeAlreadyExistError(Exception):
+    def __init__(self, msg):
+        super().__init__(msg)
+
+class SecurityAttributeNotExistError(Exception):
+    def __init__(self, msg):
+        super().__init__(msg)

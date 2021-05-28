@@ -13,6 +13,7 @@ from security_data.services.futures_services import FuturesServices
 from security_data.services.fixed_deposit_services import FixedDepositServices
 from security_data.services.fx_forward_services import FxForwardServices
 from security_data.services.otc_counter_party_services import OtcCounterPartyServices
+from security_data.services.security_attribute_services import SecurityAttributeServices
 
 #-- serivce and DB connection shall be stateless so it is safe to have a singleton
 #db = DBConn.get_db()
@@ -25,8 +26,11 @@ class AppController:
 	logger = None
 	dbmode = None
 	security_base_services = None
-	future_services = None
+	futures_services = None
+	otc_counter_party_services = None
 	fixed_deposit_services = None
+	fx_forward_services = None
+	security_attribute_services = None
 
 	def __init__(self):
 		self.logger = logging.getLogger(__name__)
@@ -48,6 +52,7 @@ class AppController:
 		self.otc_counter_party_services = OtcCounterPartyServices(db)
 		self.fixed_deposit_services = FixedDepositServices(db, self.otc_counter_party_services)
 		self.fx_forward_services = FxForwardServices(db, self.otc_counter_party_services)
+		self.security_attribute_services = SecurityAttributeServices(db)
 		return 0
 
 	def clear_security_data(self):
@@ -69,6 +74,8 @@ class AppController:
 			self.fx_forward_services.delete_all()
 			self.logger.debug("clear data in otc_counter_party table")
 			self.otc_counter_party_services.delete_all()
+			self.logger.debug("clear data in security_attribute table")
+			self.security_attribute_services.delete_all()
 			return 0
 	
 	def get_security_basic_info(self, geneva_id):
@@ -313,4 +320,55 @@ class AppController:
 		#-- create data model
 		#-- reuse the counter_party_info
 		self.otc_counter_party_services.update(counter_party_info)
+		return 0
+	
+	def get_security_attribute(self, security_id_type, security_id):
+		if self.dbmode is None:
+			raise DataStoreNotYetInitializeError("Plase call initializeDatastore to initialize datastore")
+		params = {
+			"security_id_type" : security_id_type,
+			"security_id" : security_id
+		}
+		v = AppValidatorFactory().get_validator("get_security_attribute")
+		#-- validate input fields
+		if not v.validate(params):
+			message = "Input validation error. Details: " + str(v.errors)
+			self.logger.error(message)
+			raise ValueError(message)
+		#-- get the first value from the dictionary and return
+		security_attribute_l = self.security_attribute_services.query(params)
+		security_attribute = {}
+		if len(security_attribute_l) > 0:
+			security_attribute = security_attribute_l[0]
+		return security_attribute
+
+	def add_security_attribute(self, security_attribute_info):
+		if self.dbmode is None:
+			raise DataStoreNotYetInitializeError("Plase call initializeDatastore to initialize datastore")
+		v = AppValidatorFactory().get_validator("add_security_attribute")
+		if not v.validate(security_attribute_info):
+			message = "Input validation error. Details: " + str(v.errors)
+			self.logger.error(message)
+			raise ValueError(message)
+		#-- data parsing
+		#-- no parsing need
+		#-- create data model
+		#-- reuse the security_attribute
+		self.security_attribute_services.create(security_attribute_info)
+		return 0
+
+	def update_security_attribute(self, security_attribute_info):
+		if self.dbmode is None:
+			raise DataStoreNotYetInitializeError("Plase call initializeDatastore to initialize datastore")
+		v = AppValidatorFactory().get_validator("update_security_attribute")
+		#-- validate input fields
+		if not v.validate(security_attribute_info):
+			message = "Input validation error. Details: " + str(v.errors)
+			self.logger.error(message)
+			raise ValueError(message)
+		#-- data parsing
+		#-- no parsing need
+		#-- create data model
+		#-- reuse the counter_party_info
+		self.security_attribute_services.update(security_attribute_info)
 		return 0

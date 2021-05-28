@@ -37,6 +37,12 @@ class AppValidatorFactory:
 			return self._get_add_counter_party_validator()
 		elif method_name == "update_counter_party_info":
 			return self._get_update_counter_party_info_validator()
+		elif method_name == "get_security_attribute":
+			return self._get_get_security_attribute_validator()
+		elif method_name == "add_security_attribute":
+			return self._get_add_security_attribute_validator()
+		elif method_name == "update_security_attribute":
+			return self._get_add_security_attribute_validator()
 		else:
 			raise Exception("No validator defined for method_name: " + \
 								method_name + \
@@ -460,6 +466,340 @@ bloomberg_ticker:
 '''
 		schema = yaml.load(schema_text, Loader=yaml.FullLoader)
 		return AppValidator(schema)
+
+
+	def _get_get_security_attribute_validator(self):
+		#-- note: yaml need to use space not tab for indentation
+		schema_text = '''
+security_id_type:
+  required: true
+  empty: false
+  type: string
+  maxlength: 100
+security_id:
+  required: true
+  empty: false
+  type: string
+  maxlength: 100
+'''
+		schema = yaml.load(schema_text, Loader=yaml.FullLoader)
+		return AppValidator(schema)
+
+	def _get_add_security_attribute_validator(self):
+		schema_text = '''
+security_id_type:
+  required: true
+  empty: false
+  type: string
+  allowed: ['Ticker', 'ISIN', 'Bloomberg Id']
+security_id:
+  required: true
+  empty: false
+  type: string
+  maxlength: 100
+gics_sector:
+  required: false
+  type: string
+  maxlength: 100
+gics_industry_group:
+  required: false
+  type: string
+  maxlength: 100
+industry_sector:
+  required: false
+  type: string
+  maxlength: 100
+industry_group:
+  required: false
+  type: string
+  maxlength: 100
+bics_sector_level_1:
+  required: false
+  type: string
+  maxlength: 100
+bics_industry_group_level_2:
+  required: false
+  type: string
+  maxlength: 100
+bics_industry_name_level_3:
+  required: false
+  type: string
+  maxlength: 100
+bics_sub_industry_name_level_4:
+  required: false
+  type: string
+  maxlength: 100
+parent_symbol:
+  required: false
+  type: string
+  maxlength: 100
+parent_symbol_chinese_name:
+  required: false
+  type: string
+  maxlength: 100
+parent_symbol_industry_group:
+  required: false
+  type: string
+  maxlength: 100
+cast_parent_company_name:
+  required: false
+  type: string
+  maxlength: 100
+country_of_risk:
+  required: false
+  type: string
+  maxlength: 100
+country_of_issuance:
+  required: false
+  type: string
+  maxlength: 100
+sfc_region:
+  required: false
+  type: string
+  maxlength: 100
+s_p_issuer_rating:
+  required: false
+  type: string
+  maxlength: 100
+moody_s_issuer_rating:
+  required: false
+  type: string
+  maxlength: 100
+fitch_s_issuer_rating:
+  required: false
+  type: string
+  maxlength: 100
+bond_or_equity_ticker:
+  required: false
+  type: string
+  maxlength: 100
+s_p_rating:
+  required: false
+  type: string
+  maxlength: 100
+moody_s_rating:
+  required: false
+  type: string
+  maxlength: 100
+fitch_rating:
+  required: false
+  type: string
+  maxlength: 100
+payment_rank:
+  required: false
+  type: string
+  maxlength: 100
+payment_rank_mbs:
+  required: false
+  type: string
+  maxlength: 100
+bond_classification:
+  required: false
+  type: string
+  maxlength: 100
+local_government_lgfv:
+  required: false
+  type: string
+  maxlength: 100
+first_year_default_probability:
+  required: false
+  check_with: float_format
+contingent_capital:
+  required: false
+  type: string
+  maxlength: 100
+co_co_bond_trigger:
+  required: false
+  type: string
+  maxlength: 100
+capit_type_conti_conv_tri_lvl:
+  required: false
+  type: string
+  maxlength: 100
+tier_1_common_equity_ratio:
+  required: false
+  check_with: float_format
+bail_in_capital_indicator:
+  required: false
+  type: string
+  maxlength: 100
+tlac_mrel_designation:
+  required: false
+  type: string
+  maxlength: 100
+classif_on_chi_state_owned_enterp:
+  required: false
+  type: string
+  maxlength: 100
+private_placement_indicator:
+  required: false
+  type: string
+  allowed: ['Y', 'N', '']
+trading_volume_90_days:
+  required: false
+  check_with: float_format
+'''
+		schema = yaml.load(schema_text, Loader=yaml.FullLoader)
+		return AppValidator(schema)
+
+	def _get_update_security_attribute_validator(self):
+		schema_text = '''
+security_id_type:
+  required: true
+  empty: false
+  type: string
+  allowed: ['Ticker', 'ISIN', 'Bloomberg Id']
+security_id:
+  required: true
+  empty: false
+  type: string
+  maxlength: 100
+gics_sector:
+  required: false
+  type: string
+  maxlength: 100
+gics_industry_group:
+  required: false
+  type: string
+  maxlength: 100
+industry_sector:
+  required: false
+  type: string
+  maxlength: 100
+industry_group:
+  required: false
+  type: string
+  maxlength: 100
+bics_sector_level_1:
+  required: false
+  type: string
+  maxlength: 100
+bics_industry_group_level_2:
+  required: false
+  type: string
+  maxlength: 100
+bics_industry_name_level_3:
+  required: false
+  type: string
+  maxlength: 100
+bics_sub_industry_name_level_4:
+  required: false
+  type: string
+  maxlength: 100
+parent_symbol:
+  required: false
+  type: string
+  maxlength: 100
+parent_symbol_chinese_name:
+  required: false
+  type: string
+  maxlength: 100
+parent_symbol_industry_group:
+  required: false
+  type: string
+  maxlength: 100
+cast_parent_company_name:
+  required: false
+  type: string
+  maxlength: 100
+country_of_risk:
+  required: false
+  type: string
+  maxlength: 100
+country_of_issuance:
+  required: false
+  type: string
+  maxlength: 100
+sfc_region:
+  required: false
+  type: string
+  maxlength: 100
+s_p_issuer_rating:
+  required: false
+  type: string
+  maxlength: 100
+moody_s_issuer_rating:
+  required: false
+  type: string
+  maxlength: 100
+fitch_s_issuer_rating:
+  required: false
+  type: string
+  maxlength: 100
+bond_or_equity_ticker:
+  required: false
+  type: string
+  maxlength: 100
+s_p_rating:
+  required: false
+  type: string
+  maxlength: 100
+moody_s_rating:
+  required: false
+  type: string
+  maxlength: 100
+fitch_rating:
+  required: false
+  type: string
+  maxlength: 100
+payment_rank:
+  required: false
+  type: string
+  maxlength: 100
+payment_rank_mbs:
+  required: false
+  type: string
+  maxlength: 100
+bond_classification:
+  required: false
+  type: string
+  maxlength: 100
+local_government_lgfv:
+  required: false
+  type: string
+  maxlength: 100
+first_year_default_probability:
+  required: false
+  check_with: float_format
+contingent_capital:
+  required: false
+  type: string
+  maxlength: 100
+co_co_bond_trigger:
+  required: false
+  type: string
+  maxlength: 100
+capit_type_conti_conv_tri_lvl:
+  required: false
+  type: string
+  maxlength: 100
+tier_1_common_equity_ratio:
+  required: false
+  check_with: float_format
+bail_in_capital_indicator:
+  required: false
+  type: string
+  maxlength: 100
+tlac_mrel_designation:
+  required: false
+  type: string
+  maxlength: 100
+classif_on_chi_state_owned_enterp:
+  required: false
+  type: string
+  maxlength: 100
+private_placement_indicator:
+  required: false
+  type: string
+  allowed: ['Y', 'N', '']
+trading_volume_90_days:
+  required: false
+  check_with: float_format
+'''
+		schema = yaml.load(schema_text, Loader=yaml.FullLoader)
+		return AppValidator(schema)
+
+
 
 class AppValidator(Validator):
 	
